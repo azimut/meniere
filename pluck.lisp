@@ -4,7 +4,7 @@
 ;; https://sourceforge.net/p/incudine/mailman/message/34320609/
 ;; https://ccrma.stanford.edu/realsimple/faust_strings/faust_strings.pdf
 
-;; FIXME!
+;; FIXME?
 
 (define-vug diffgtz (x)
   (if (plusp (- x (delay1 x)))
@@ -52,16 +52,17 @@
                  (s1 (- 1 l)))
     (+ s0 (* s1 (~ (+ (* x lgain) (* lpole2 it)))))))
 
-(defparameter *env1* (make-perc 0 .25))
+(defparameter *env1* )
 
 ;; (define-vug excitation (gain p)
 ;;    (* (white-noise gain) (trigger p (incudine.util:sample (incudine.vug:mouse-button)))))
 ;; (define-vug excitation (gain p)
 ;;   (* (white-noise gain)
 ;;      (trigger p (incudine.util:sample 1.))))
-(define-vug excitation (gain p)
+(define-vug excitation (gain p atk dur)
   (* (white-noise gain)
-     (cond ((eq (trigger p (incudine.util:sample 1.)) 1.) 1) (t (envelope *env1* 1 1. #'incudine:stop)))))
+     (cond ((eq (trigger p (incudine.util:sample 1.)) 1.) 1)
+           (t (envelope (make-perc atk dur) 1 1. #'incudine:stop)))))
 ;; (define-vug excitation (gain p)
 ;;   (* (white-noise gain)
 ;;      (envelope *env1* 1 1. #'incudine:stop)))
@@ -72,19 +73,19 @@
 ;; (setf *env1* (make-envelope '(0 1 0) '(.1 .5) :curve :step))
 ;; (setf *env1* (make-envelope '(0 1 0) '(.1 .11) :curve :step))
 
-(define-vug filtered-excitation (gain freq pickangle beta l)
+(define-vug filtered-excitation (gain freq pickangle beta l atk dur)
   (with-samples ((p (/ *sample-rate* freq)))
-    (level-filter (pickpos (pickdir (excitation gain p) pickangle) beta p)
+    (level-filter (pickpos (pickdir (excitation gain p atk dur) pickangle) beta p)
                   l freq)))
 
 (define-vug stringloop (in freq t60 b)
   (with-samples ((dt (/ freq)))
     (~ (damping-filter2 (vdelay (+ in it) 0.05 dt :cubic) freq t60 b))))
 
-(dsp! dsp-pluck (gain freq pickangle beta l t60 b)
-  (:defaults .7 440 .9 .13 .3 4 .5)
+(dsp! dsp-pluck (gain freq pickangle beta l t60 b atk dur)
+  (:defaults .7 440 .9 .13 .3 4 .5 0 1)
   (foreach-frame
     (stereo
      (stringloop
-      (filtered-excitation gain freq pickangle beta l)
+      (filtered-excitation gain freq pickangle beta l atk dur)
       freq t60 b))))
