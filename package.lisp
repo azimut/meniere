@@ -4,4 +4,12 @@
     (:use #:cl
           #:incudine
           #:incudine.vug
-          #:incudine.util))
+          #:incudine.util)
+  (:export #:dsp-square
+           #:dsp-pulse
+           #:prophet
+           #:green
+           #:keen
+           #:bass
+           #:ixi-kick
+           #:ixi-snare))
