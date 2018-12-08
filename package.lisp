@@ -7,6 +7,7 @@
           #:incudine.util)
   (:export #:dsp-square
            #:dsp-pulse
+           #:dsp-pluck
            #:prophet
            #:green
            #:keen

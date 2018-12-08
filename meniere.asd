@@ -9,4 +9,5 @@
   :depends-on (#:swank
                #:incudine)
   :components ((:file "package")
+               (:file "pluck")
                (:file "meniere")))
