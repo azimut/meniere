@@ -52,8 +52,6 @@
                  (s1 (- 1 l)))
     (+ s0 (* s1 (~ (+ (* x lgain) (* lpole2 it)))))))
 
-(defparameter *env1* )
-
 ;; (define-vug excitation (gain p)
 ;;    (* (white-noise gain) (trigger p (incudine.util:sample (incudine.vug:mouse-button)))))
 ;; (define-vug excitation (gain p)
