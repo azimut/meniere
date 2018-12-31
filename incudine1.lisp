@@ -8,8 +8,8 @@
 (define-vug s1 (f a e g d q)
   (* a
      (envelope e g d #'free)
-     (bpf (+ (- (phasor f (coerce (random 1.0) 'double-float)) 0.5)
-             (- (phasor f (coerce (random 1.0) 'double-float)) 0.5))
+     (bpf (+ (- (phasor f (sample (random 1.0))) 0.5)
+             (- (phasor f (sample (random 1.0))) 0.5))
           f q)))
 
 (dsp! synth1 (f a (e envelope) g d q)
