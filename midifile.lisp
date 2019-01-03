@@ -1,4 +1,4 @@
-(in-package :shiny)
+(in-package #:meniere)
 ;; TODO: go-track loop end check for outer range.
 ;;       function that returns pairs (50 .5) per measure
 ;;
@@ -41,6 +41,14 @@
 
 (defvar *qnotes* (make-hash-table))
 
+(defun get-time (mf &optional (unit :seconds))
+  (declare (midifile:input-stream mf)
+           ((member :seconds :beats :time)))
+  (case unit
+    (:seconds (midifile:event-seconds mf))
+    (:beats   (midifile:event-beats mf))
+    (:time    (midifile:event-time mf))))
+
 (defun go-track (to-track mf)
   "Skip ahead TO-TRACK"
   (declare (unsigned-byte to-track) (midifile:input-stream mf))
@@ -66,8 +74,9 @@
        :collect (midifile:message-data1 mf))))
 
 (defun push-midi-note
-    (note time-seconds velocity &optional start-time coerce)
-  "helper for (get-notes-duration)"
+    (note time-seconds velocity &optional start-time-p coerce)
+  "helper for (get-notes-duration), returns back the note
+   only when the note is released otherwise returns NIL"
   (when coerce
     (setf time-seconds (coerce time-seconds 'single-float)))
   (let ((current (gethash note *qnotes*)))
@@ -78,8 +87,8 @@
           ;; Remove cache for note
           (setf (gethash note *qnotes*) NIL)
           (let ((result (list note (- time-seconds (cadr current)))))
-            (when start-time
-              (alexandria:appendf result (list (cadr current))))
+            (when start-time-p
+              (appendf result (list (cadr current))))
             result))
         (when (plusp velocity)
           (setf (gethash note *qnotes*)
@@ -87,7 +96,8 @@
           NIL))))
 
 (defun get-notes-durations
-    (filename &optional (track-number 0) start-time (coerce t))
+    (filename
+     &optional (track-number 0) start-time-p (coerce t) (unit :seconds))
   "get notes and duration as pairs, useful for bars with only one note
    > (get-notes-duration *mf*)
    ((50 .2) (60 .2) (90 1.3))"
@@ -104,24 +114,25 @@
         :when (and (= ev 144)
                    (= track-number (midifile:current-track mf)))
         :collect
-          (let ((seconds (midifile:event-seconds mf)))
+          (let ((seconds (get-time mf unit)))
             (when (not (= previous-time seconds))
               (setf previous-time seconds))
             (push-midi-note (midifile:message-data1 mf)
                             seconds
                             (midifile:message-data2 mf)
-                            start-time
+                            start-time-p
                             coerce))))))
 
 (defun get-notes-durations-chords
-    (filename &optional (track-number 0) start-time (coerce t))
+    (filename
+     &optional (track-number 0) start-time-p (coerce t) (unit :seconds))
   "sorts and groups get-notes-duration to get the notes on chords"
   (declare (string filename))
   (remove-if
    #'null
    (loop
       :for (note duration time)
-      :in  (sort (get-notes-durations filename track-number T coerce)
+      :in  (sort (get-notes-durations filename track-number T coerce unit)
                  #'< :key #'caddr)
       :with queue
       :with last-time
@@ -139,13 +150,15 @@
                  (setf queue (list notes durations)))))
             ((and queue (not (= last-time time)))
              (let ((result queue))
-               (when start-time
-                 (alexandria:appendf result (list last-time)))
+               (when start-time-p
+                 (appendf result (list last-time)))
                (setf last-time time)
                (setf queue `(,note ,duration))
                result))))))
 
-(defun get-notes-chords (filename &optional (track-number 0))
+(defun get-notes-chords
+    (filename
+     &optional (track-number 0) (unit :seconds))
   "get notes grouped by time they were triggered
    > (get-notes-list *mf*)
    ((60 62 65) (60 62 69) (79)"
@@ -162,7 +175,7 @@
                    (= track-number (midifile:current-track mf))
                    (> (midifile:message-data2 mf) 0))
         :collect
-          (let* ((time (midifile:event-seconds mf))
+          (let* ((time (get-time mf unit))
                  (now  (list (midifile:message-data1 mf)
                              time)))
             (cond ((not queue)
@@ -176,7 +189,8 @@
                      (push now queue)))))))))
 
 (defun get-notes-durations-chords-silences
-    (filename &optional (track-number 0) start-time (coerce t))
+    (filename
+     &optional (track-number 0) start-time-p (coerce t) (unit :seconds))
   "Returns pais of notes/durations on the current TRACK-NUMBER.
    Including any silence period. As a pair with 0 as the midi-note
    and the duration of the silence.
@@ -186,11 +200,11 @@
   (declare (string filename))
   (loop
      :for (notes durations time)
-     :in  (get-notes-durations-chords filename track-number T coerce)
+     :in  (get-notes-durations-chords filename track-number T coerce unit)
      :with next-time
      :appending
        (let ((current
-              (if start-time
+              (if start-time-p
                   (list notes durations time)
                   (list notes durations))))
          (cond
@@ -209,7 +223,7 @@
                    (zero-start    (- time zero-duration)))
               (setf next-time
                     (+ time (extremum (ensure-list durations) #'>)))
-              (if start-time
+              (if start-time-p
                   (list (list 0 zero-duration zero-start) current)
                   (list (list 0 zero-duration) current))))
            ;; No silence in between (?
@@ -220,7 +234,9 @@
 
 ;;--------------------------------------------------
 
-(defun group-by-measure (mf &optional (measure-length 2) (track-number 0))
+(defun group-by-measure
+    (mf
+     &optional (measure-length 2) (track-number 0) (unit :seconds))
   "returns 2 values as lists. First list of values are the notes per measure.
    Second list of values is for the durations.
    > (group-by-measure *mf* 2 1)
@@ -229,7 +245,7 @@
     ((0.9989586 0.9989586) (0.9989586 0.9989586)))"
   (loop
      :for (notes durations)
-     :in (get-notes-durations-chords-silences mf track-number)
+     :in (get-notes-durations-chords-silences mf track-number unit)
      :with acc-notes
      :with acc-durations
      :with ret-notes
@@ -257,7 +273,8 @@
                               (reverse ret-durations)))))
 
 (defun get-measures-pair
-    (mf &optional (n-measures 4) (measure-length 2) (track-number 0))
+    (mf
+     &optional (n-measures 4) (measure-length 2) (track-number 0) (unit :seconds))
   "Returns a list of pairs of notes and durations of the midi file MF
    and TRACK-NUMBER. Up to N-MEASURES measure by MEASURE-LENGTH.
    Re-arrange output of group-by-measure to make it easier to
@@ -266,7 +283,7 @@
    (((40 42 43 47) (0.49895832 0.49895835 0.49895835 0.49895835))
     ((45 43 38)    (0.49895835 0.49895835 0.99895835)))"
   (multiple-value-bind (notes durations)
-      (group-by-measure mf measure-length track-number)
+      (group-by-measure mf measure-length track-number unit)
     (loop
        :for measure-notes :in notes
        :for measure-durations :in durations

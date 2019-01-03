@@ -4,10 +4,12 @@
   :description "collection of incudine dsps"
   :author "Azimut <azimut.github@protonmail.com>"
   :license  "Specify license here"
-  :version "0.0.1"
+  :version "0.0.2"
   :serial t
   :depends-on (#:swank
-               #:incudine)
+               #:incudine
+               #:alexandria)
   :components ((:file "package")
                (:file "pluck")
-               (:file "meniere")))
+               (:file "meniere")
+               (:file "midifile")))
