@@ -6,8 +6,7 @@
 ;; ----
 ;; In order to use the (group-measures-pair) function you need to know
 ;; the midi song bar length. Ex: 4/4 or 6/8.  Then provide the
-;; MEASURE-LENGTH, here is measure so .25 is 1 black note.  a
-;; MEASURE-LENGTH of 2 is then a 4/4 due (= 2 (* .25 4))
+;; MEASURE-LENGTH. It varies depending the UNIT you use.
 ;;
 ;; General Midi Info
 ;; -----------------
@@ -236,7 +235,7 @@
 
 (defun group-by-measure
     (mf
-     &optional (measure-length 2) (track-number 0) (unit :seconds))
+     &optional (measure-length 2) (track-number 0) (unit :seconds) (silence T))
   "returns 2 values as lists. First list of values are the notes per measure.
    Second list of values is for the durations.
    > (group-by-measure *mf* 2 1)
@@ -245,7 +244,9 @@
     ((0.9989586 0.9989586) (0.9989586 0.9989586)))"
   (loop
      :for (notes durations)
-     :in (get-notes-durations-chords-silences mf track-number unit)
+     :in (if silence
+             (get-notes-durations-chords-silences mf track-number NIL T unit)
+             (get-notes-durations-chords          mf track-number NIL T unit))
      :with acc-notes
      :with acc-durations
      :with ret-notes
@@ -274,7 +275,7 @@
 
 (defun get-measures-pair
     (mf
-     &optional (n-measures 4) (measure-length 2) (track-number 0) (unit :seconds))
+     &optional (n-measures 4) (measure-length 2) (track-number 0) (unit :seconds) (silence T))
   "Returns a list of pairs of notes and durations of the midi file MF
    and TRACK-NUMBER. Up to N-MEASURES measure by MEASURE-LENGTH.
    Re-arrange output of group-by-measure to make it easier to
@@ -283,7 +284,7 @@
    (((40 42 43 47) (0.49895832 0.49895835 0.49895835 0.49895835))
     ((45 43 38)    (0.49895835 0.49895835 0.99895835)))"
   (multiple-value-bind (notes durations)
-      (group-by-measure mf measure-length track-number unit)
+      (group-by-measure mf measure-length track-number unit silence)
     (loop
        :for measure-notes :in notes
        :for measure-durations :in durations
