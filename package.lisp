@@ -11,13 +11,15 @@
                 #:extremum)
   (:export #:dsp-square
            #:dsp-pulse
+           #:dsp-prophet
+           #:dsp-green
+           #:dsp-keen
+           #:dsp-bass
+           #:dsp-ixi-kick
+           #:dsp-ixi-snare
+           ;;
            #:dsp-pluck
-           #:prophet
-           #:green
-           #:keen
-           #:bass
-           #:ixi-kick
-           #:ixi-snare
+           ;;
            #:get-notes
            #:get-notes-durations
            #:get-notes-durations-chords

@@ -2,6 +2,44 @@
 
 (in-package #:meniere)
 
+(define-vug saw (freq amp)
+  (mod (sine freq amp) 1))
+
+(define-vug round-sine (freq amp)
+  (declare (sample freq) (envelope amp))
+  (* .1 (the fixnum (round (sine freq amp) .1))))
+
+;;--------------------------------------------------
+;; FoxDot - SC - Klank (sorta)
+;; http://doc.sccode.org/Classes/Klank.html
+(dsp! dsp-klank
+    (freq1 freq2 freq3 freq4 freq5 freq6 freq7 freq8  amp lpf lpr)
+  (:defaults 523.2503 587.32855 622.253
+             698.4553 783.98944 830.608
+             932.3258 1046.5002
+             .01 200 .5)
+  (with-samples ((n (white-noise))
+                 ;;(n (* n (impulse 2 1 .1)))
+                 ;;(n 523.2503)
+                 (in (+ (incudine.vug:ringz n freq1 1)
+                        (incudine.vug:ringz n freq2 1)
+                        (incudine.vug:ringz n freq3 1)
+                        (incudine.vug:ringz n freq4 1)))
+                 ;;(in (downsamp 2 in))
+                 (in (lpf in lpf lpr))
+                 (in (* amp in)))
+    (stereo in)))
+
+;; (dsp! dsp-blip (freq amp)
+;;   (:defaults 440 .1)
+;;   (with-samples ((in (* freq (+ -2 (incudine.vug:white-noise 4))))
+;;                  (in (* in 2))
+;;                  (in (+ (sine (* freq 1.0002) 1 1.5)
+;;                         (* (sine freq 1 (incudine.util:xli ))
+;;                            (incudine.vug:impulse (/ freq 2f0)))))
+;;                  (in (* amp in)))
+;;     (stereo in)))
+
 ;;--------------------------------------------------
 ;; Sonic-pi
 
@@ -35,7 +73,7 @@
 ;;--------------------------------------------------
 ;; Overtone - Prophet
 
-(dsp! prophet (freq amp dur cutoff-freq rq attack decay)
+(dsp! dsp-prophet (freq amp dur cutoff-freq rq attack decay)
   (:defaults 440 .5 1 12000 .3 1 2)
   (with-samples
       ((i (+
@@ -57,7 +95,7 @@
 ;;--------------------------------------------------
 ;; Overtone - All i wanted
 
-(dsp! green (freq dur amp rms)
+(dsp! dsp-green (freq dur amp rms)
   (:defaults 440 1 1 0)
   (with-samples
       ((in (incudine.vug:sine (+ freq (* 3 (incudine.vug:sine 3)))))
@@ -69,7 +107,7 @@
     (setf rms in)
     (out in in)))
 
-(dsp! keen (freq dur amp rms)
+(dsp! dsp-keen (freq dur amp rms)
   (:defaults 440 1 1 0)
   (with-samples
       ((in (incudine.vug:pulse (+ freq (* 3 (incudine.vug:sine 9)))))
@@ -80,7 +118,7 @@
     (setf rms in)
     (out in in)))
 
-(dsp! bass (freq amp dur rms)
+(dsp! dsp-bass (freq amp dur rms)
   (:defaults 110 1 4 0)
   (with-samples
       ((decay (min 2d0 (- dur .5d0)))
@@ -102,12 +140,12 @@
   (sine carfreq (sine modfreq 0 pmindex)))
 
 ;; FIXME!
-(dsp! ixi-kick (mod-freq
-                mod-index
-                sustain
-                beater-noise-level
-                pan
-                amp)
+(dsp! dsp-ixi-kick (mod-freq
+                    mod-index
+                    sustain
+                    beater-noise-level
+                    pan
+                    amp)
   (:defaults 2.6 5 .4 .025 0 .3)
   (with-samples ((freq 80)
                  (pitch-contour (line (* freq 2) freq .02 #'identity))
@@ -133,11 +171,11 @@
 (define-vug lf-noise0 ()
   (white-noise))
 
-(dsp! ixi-snare (drum-mode-level
-                 snare-level
-                 snare-tightness
-                 sustain
-                 amp)
+(dsp! dsp-ixi-snare (drum-mode-level
+                     snare-level
+                     snare-tightness
+                     sustain
+                     amp)
   (:defaults 1 50 1200 .04 .3)
   (with-samples
       ((freq 305)
