@@ -4,7 +4,7 @@
   :description "collection of incudine dsps"
   :author "Azimut <azimut.github@protonmail.com>"
   :license  "Specify license here"
-  :version "0.0.2"
+  :version "0.0.6"
   :serial t
   :depends-on (#:swank
                #:incudine
