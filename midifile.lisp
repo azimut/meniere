@@ -1,44 +1,12 @@
 (in-package #:meniere)
-;; TODO: go-track loop end check for outer range.
-;;       function that returns pairs (50 .5) per measure
+;; TODO:
+;; - go-track loop end check for outer range.
+;; - function that returns pairs (50 .5) per measure
+;; - everything can be probably generalized more
 ;;
-;; NOTE
-;; ----
-;; In order to use the (group-measures-pair) function you need to know
-;; the midi song bar length. Ex: 4/4 or 6/8.  Then provide the
-;; MEASURE-LENGTH. It varies depending the UNIT you use.
-;;
-;; General Midi Info
-;; -----------------
-;; Midi Tracks:
-;; (Sometimes)One per line you see on a sheet.
-;; Starting from 0, from the top OR bottom line.
-;;
-;; Midi Events:
-;; List of midi events in hexadecimal
-;; http://www.onicos.com/staff/iz/formats/midi-event.html
-;;
-;; 144 - 0x90 - Chan 1 Note on
-;; 176 - 0xB0 -	Chan 1 Control mode change
-;; 192 - 0xC0 - Chan 1 Program change
-;; 255 - 0xFF -	Sys real time sys reset
-;;
-;; Midi Notes:
-;; There are no explicit silence/rests on the midifile format
-;;
-;; Example
-;; -------
-;; (defparameter *notes* nil)
-;; (setf *notes* (subseq (get-measures-pair *mf* 10 2 1) 6))
-;; (let ((measures (make-heap *notes*)))
-;;   (defun f (time)
-;;     (let* ((measure (next measures))
-;;            (notes (first measure))
-;;            (durations (second measure)))
-;;       (play-midi-arp time notes 50 durations 0 (d2o durations)))
-;;     (aat (+ time #[2 b]) #'f it)))
 
-(defvar *qnotes* (make-hash-table))
+(defvar *qnotes* (make-hash-table)
+  "Hash table used by (push-midi-note) that stores the state of each key.")
 
 (defun get-time (mf &optional (unit :seconds))
   (declare (midifile:input-stream mf)
@@ -125,7 +93,10 @@
 (defun get-notes-durations-chords
     (filename
      &optional (track-number 0) start-time-p (coerce t) (unit :seconds))
-  "sorts and groups get-notes-duration to get the notes on chords"
+  "sorts and groups (get-notes-duration) to get the notes grouped in chords
+   > (meniere:get-notes-durations-chords *mf* 1)
+   (((41 48 53) (0.23645833 0.23645833 0.23645833))
+    ((41 48 53) (0.23645833 0.23645833 0.23645833)))"
   (declare (string filename))
   (remove-if
    #'null
