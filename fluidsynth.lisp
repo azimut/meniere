@@ -91,7 +91,7 @@
 
 ;; Single note, single all
 (defmethod pa ((time double-float) (notes number) (velocity fixnum) (duration number) (channel fixnum) (offset number) &key pan)
-  (when (> offset 0)
+  (when (>= offset 0)
     (if pan
         (p (+ time (calc-beats offset)) notes velocity duration channel :pan pan)
         (p (+ time (calc-beats offset)) notes velocity duration channel))))
