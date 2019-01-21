@@ -9,7 +9,9 @@
                 #:appendf
                 #:last-elt
                 #:ensure-list
-                #:extremum)
+                #:extremum
+                #:iota
+                #:when-let)
   (:export #:dsp-square
            #:dsp-pulse
            #:dsp-prophet
@@ -42,6 +44,21 @@
            #:fload
            #:*synth*
            #:*settings*
+           ;;
+           #:play-lsample-f
+           #:bplay
+           #:list-buffer
+           #:clean-buffers
+           #:list-words
+           #:node-alive
+           #:bbufer-load
+           #:bbplay
+           #:put-phrase
+           #:word-play
+           #:make-instrument
+           #:list-instruments
+           #:clean-instruments
+           #:play-instrument
            ;;
            #:get-notes
            #:get-notes-durations

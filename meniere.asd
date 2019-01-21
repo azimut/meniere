@@ -16,4 +16,5 @@
                (:file "pluck")
                (:file "meniere")
                (:file "fluidsynth")
+               (:file "buffers")
                (:file "midifile")))

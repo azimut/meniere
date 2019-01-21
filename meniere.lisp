@@ -2,6 +2,13 @@
 
 (in-package #:meniere)
 
+;; http://stevelosh.com/blog/2016/08/playing-with-syntax/
+(defmacro mulf (place factor)
+  `(setf ,place (* ,place ,factor)))
+
+(defmacro divf (place divisor)
+  `(setf ,place (/ ,place ,divisor)))
+
 ;; Placeholder for overtone.lisp elsewhere
 (defun note (n)
   (cm:keynum n))

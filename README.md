@@ -1,11 +1,36 @@
-## About meniere
+# About meniere
 
 Collection of [incudine](http://incudine.sourceforge.net/) dsps and helpers. Depends on [CM](https://github.com/ormf/cm/).
+
+## buffers.lisp
+Helpers to handle incudine buffer objects. They are all build around caching and reusing buffers when possible. Default buffer dsp! has some filters build-in.
+
+```
+(bbufer-load "/home/user/song.wav")
+(bbplay "song.wav" :lpf 200 :pan .1)
+```
+
+You can manually create subsets of a buffer, to let's say play a `word` from dialogue sample.
+
+```
+(bbufer-load "/home/user/speech.wav")
+(put-phrase "welcome" "speech.wav" 1 2)
+(put-phrase "change" "speech.wav" 9 4)
+(word-play "welcome")
+```
+
+You can make an instrument which will interpolate the note filling the blanks for notes missing.
+
+```
+(make-instrument 'drum "/home/sendai/Downloads/sample/OH/")
+(push-note 'drum 32 "kick_OH_F_9.wav")
+(play-instrument 'drum 39)
+```
 
 ## fluidsynth.lisp
 Shortcuts to control and use fluidsynth with incudine. Including `(p)` and `(pa)`, helpers to play a note/chord or arpeggio, useful on a temporal recursion scenario.
 
-## Examples
+### Examples
 ```
 > (fload "/home/user/myfont.sf2")
 > (p (now) :c4 60 1 0)
