@@ -7,6 +7,7 @@
         #:incudine.util)
   (:import-from #:alexandria
                 #:appendf
+                #:last-elt
                 #:ensure-list
                 #:extremum)
   (:export #:dsp-square
@@ -19,6 +20,28 @@
            #:dsp-ixi-snare
            ;;
            #:dsp-pluck
+           ;;
+           #:p
+           #:pa
+           #:off-with-the-beats
+           #:fpress
+           #:fsens
+           #:fpitch
+           #:fchorus-toggle
+           #:fchorus
+           #:freverb-toggle
+           #:freverb
+           #:freverb-preset
+           #:fp
+           #:all-piano
+           #:try-sounds
+           #:fg
+           #:fpan
+           #:all-pan
+           #:fstart
+           #:fload
+           #:*synth*
+           #:*settings*
            ;;
            #:get-notes
            #:get-notes-durations

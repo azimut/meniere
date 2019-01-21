@@ -9,6 +9,7 @@
   :serial t
   :depends-on (#:swank
                #:incudine
+               #:incudine-fluidsynth
                #:alexandria
                #:cm)
   :components ((:file "package")

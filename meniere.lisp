@@ -2,6 +2,10 @@
 
 (in-package #:meniere)
 
+;; Placeholder for overtone.lisp elsewhere
+(defun note (n)
+  (cm:keynum n))
+
 (define-vug saw (freq amp)
   (mod (sine freq amp) 1))
 
