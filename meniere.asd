@@ -9,8 +9,10 @@
   :serial t
   :depends-on (#:swank
                #:incudine
-               #:alexandria)
+               #:alexandria
+               #:cm)
   :components ((:file "package")
                (:file "pluck")
                (:file "meniere")
+               (:file "fluidsynth")
                (:file "midifile")))

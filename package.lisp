@@ -1,10 +1,10 @@
 ;;;; package.lisp
 
 (uiop:define-package #:meniere
-    (:use #:cl
-          #:incudine
-          #:incudine.vug
-          #:incudine.util)
+  (:use #:cl
+        #:incudine
+        #:incudine.vug
+        #:incudine.util)
   (:import-from #:alexandria
                 #:appendf
                 #:ensure-list
