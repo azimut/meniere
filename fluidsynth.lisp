@@ -41,13 +41,15 @@
 
 (defmethod p ((time double-float) (pitch list) (velocity fixnum) (duration number) (channel list) &key pan)
   "Play chord of notes, on provided channels"
-  (mapcar (lambda (x y) (p time x velocity duration y))
-          pitch
-          channel))
+  (mapcar
+   (lambda (p v)
+     (declare (fixnum p v))
+     (p time p velocity duration v))
+   pitch
+   channel))
 (defmethod p ((time double-float) (pitch fixnum) (velocity fixnum) (duration number) (channel fixnum) &key pan)
   "Play given pitch"
-  (when (and (> pitch 0)
-             (< pitch 127)
+  (when (and (< 0 pitch 127)
              (> duration 0))
     (when pan
       (fluidsynth:cc *synth* channel 10 (alexandria:clamp pan 0 127)))
@@ -58,16 +60,15 @@
   (let ((d (cm:rhythm duration)))
     (when (> d 0)
       (at time #'fluidsynth:noteon *synth* channel pitch velocity)
-      (at (+ time (* *sample-rate* (* (sample d) (spb *tempo*)))) #'fluidsynth:noteoff *synth* channel pitch))))
+      (at (+ time (calc-beats d)) #'fluidsynth:noteoff *synth* channel pitch))))
 (defmethod p ((time double-float) (pitch symbol) (velocity fixnum) (duration symbol) (channel fixnum) &key pan)
   "Play given note on american notation, at CM rhythm"
   (unless (and (eql :_ pitch) (eql 'cm::r pitch))
     (let ((n (if (keywordp pitch) (note pitch) (cm:keynum pitch)))
           (d (cm:rhythm duration)))
       (when (> d 0)
-        (at time #'fluidsynth:noteon
-            *synth* channel n velocity)
-        (at (+ time (* *sample-rate* (* (sample d) (spb *tempo*)))) #'fluidsynth:noteoff
+        (at time #'fluidsynth:noteon *synth* channel n velocity)
+        (at (+ time (calc-beats d)) #'fluidsynth:noteoff
             *synth* channel n)))))
 (defmethod p ((time double-float) (pitch symbol) (velocity fixnum) (duration number) (channel fixnum) &key pan)
   "Play given note on american notation"
@@ -112,6 +113,19 @@
 (defmethod pa ((time double-float) (notes number) (velocity fixnum) (duration number) (channel fixnum) (offset list) &key pan)
   (mapcar (lambda (o) (when (>= o 0) (p (+ time (calc-beats o)) notes velocity duration channel)))
           offset))
+(defmethod pa ((time double-float) (notes number) (velocity list) (duration number) (channel fixnum) (offset list) &key pan)
+  (mapcar
+   (lambda (v o)
+     (declare (fixnum v))
+     (when (>= o 0) (p (+ time (calc-beats o)) notes v duration channel)))
+   velocity
+   offset))
+(defmethod pa ((time double-float) (notes number) (velocity fixnum) (duration list) (channel fixnum) (offset list) &key pan)
+  (mapcar
+   (lambda (d o)
+     (when (>= o 0) (p (+ time (calc-beats o)) notes velocity d channel)))
+   duration
+   offset))
 
 ;; Multiple notes
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration number) (channel fixnum) (offset number) &key pan)
@@ -132,14 +146,14 @@
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration number) (channel fixnum) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o v) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n v duration channel))
+    (mapcar (lambda (n o v) (p (+ time (calc-beats o)) n v duration channel))
             notes
             offsets
             velocity)))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration number) (channel list) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o v c) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n v duration c))
+    (mapcar (lambda (n o v c) (p (+ time (calc-beats o)) n v duration c))
             notes
             offsets
             velocity
@@ -147,14 +161,14 @@
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration list) (channel fixnum) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o d) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n velocity d channel))
+    (mapcar (lambda (n o d) (p (+ time (calc-beats o)) n velocity d channel))
             notes
             offsets
             duration)))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration list) (channel list) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o c d) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n velocity d c))
+    (mapcar (lambda (n o c d) (p (+ time (calc-beats o)) n velocity d c))
             notes
             offsets
             channel
@@ -162,7 +176,7 @@
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration list) (channel fixnum) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o v d) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n v d channel))
+    (mapcar (lambda (n o v d) (p (+ time (calc-beats o)) n v d channel))
             notes
             offsets
             velocity
@@ -170,51 +184,51 @@
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration list) (channel list) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o v c d) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n v d c))
+    (mapcar (lambda (n o v c d) (p (+ time (calc-beats o)) n v d c))
             notes
             offsets
             velocity
             channel
             duration)))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration number) (channel fixnum) (offset list) &key pan)
-  (mapcar (lambda (n o) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n velocity duration channel))
+  (mapcar (lambda (n o) (p (+ time (calc-beats o)) n velocity duration channel))
           notes
           offset))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration number) (channel list) (offset list) &key pan)
-  (mapcar (lambda (n o c) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n velocity duration c))
+  (mapcar (lambda (n o c) (p (+ time (calc-beats o)) n velocity duration c))
           notes
           offset
           channel))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration number) (channel fixnum) (offset list) &key pan)
-  (mapcar (lambda (n o v) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n v duration channel))
+  (mapcar (lambda (n o v) (p (+ time (calc-beats o)) n v duration channel))
           notes
           offset
           velocity))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration number) (channel list) (offset list) &key pan)
-  (mapcar (lambda (n o v c) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n v duration c))
+  (mapcar (lambda (n o v c) (p (+ time (calc-beats o)) n v duration c))
           notes
           offset
           velocity
           channel))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration list) (channel fixnum) (offset list) &key pan)
-  (mapcar (lambda (n o d) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n velocity d channel))
+  (mapcar (lambda (n o d) (p (+ time (calc-beats o)) n velocity d channel))
           notes
           offset
           duration))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration list) (channel list) (offset list) &key pan)
-  (mapcar (lambda (n o c d) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n velocity d c))
+  (mapcar (lambda (n o c d) (p (+ time (calc-beats o)) n velocity d c))
           notes
           offset
           channel
           duration))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration list) (channel fixnum) (offset list) &key pan)
-  (mapcar (lambda (n o v d) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n v d channel))
+  (mapcar (lambda (n o v d) (p (+ time (calc-beats o)) n v d channel))
           notes
           offset
           velocity
           duration))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration list) (channel list) (offset list) &key pan)
-  (mapcar (lambda (n o v c d) (p (+ time (* *sample-rate* (* (sample o) (spb *tempo*)))) n v d c))
+  (mapcar (lambda (n o v c d) (p (+ time (calc-beats o)) n v d c))
           notes
           offset
           velocity
