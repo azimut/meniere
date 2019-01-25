@@ -2,17 +2,32 @@
 
 Collection of [incudine](http://incudine.sourceforge.net/) dsps and helpers. Depends on [CM](https://github.com/ormf/cm/).
 
+## cm.lisp
+
+Common Music helpers that provide constructors for patterns that mimic the `(make-*)` that Common Music 3 has.
+
+```
+> (next (make-cycle '(c d e)) 6)
+(C D E C D E)
+> (next (make-weighting '(c (d .1))) 6)
+(C C C C D C)
+> (next (make-line '(1 2 3 4)) 6)
+(1 2 3 4 4 4)
+> (next (make-graph `((c 3) (g 3) (e ,(make-cycle '(1 2))))) 6)
+(C E C E G E)
+```
+
 ## buffers.lisp
 Helpers to handle incudine buffer objects. They are all build around caching and reusing buffers when possible. Default buffer dsp! has some filters build-in.
 
-```
+```lisp
 (bbufer-load "/home/user/song.wav")
 (bbplay "song.wav" :lpf 200 :pan .1)
 ```
 
 You can manually create subsets of a buffer, to let's say play a `word` from dialogue sample.
 
-```
+```lisp
 (bbufer-load "/home/user/speech.wav")
 (put-phrase "welcome" "speech.wav" 1 2)
 (put-phrase "change" "speech.wav" 9 4)
@@ -21,7 +36,7 @@ You can manually create subsets of a buffer, to let's say play a `word` from dia
 
 You can make an instrument which will interpolate the note filling the blanks for notes missing.
 
-```
+```lisp
 (make-instrument 'drum "/home/sendai/Downloads/sample/OH/")
 (push-note 'drum 32 "kick_OH_F_9.wav")
 (play-instrument 'drum 39)
@@ -70,7 +85,7 @@ In order to use the (group-measures-pair) function you need to know
 the midi song bar length. Ex: 4/4 or 6/8.  Then provide the
 MEASURE-LENGTH. It varies depending the UNIT you use.
 
-#### Example
+#### `Example`
 ```lisp
 (defparameter *notes* nil)
 (setf *notes* (subseq (get-measures-pair *mf* 10 2 1) 6))
