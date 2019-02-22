@@ -19,34 +19,33 @@
 
 ;;--------------------------------------------------
 
-(declaim (ftype (function (alexandria:non-negative-real) double-float)
-                calc-beats))
+(declaim (inline calc-beats))
 (defun calc-beats (offset)
-  (declare (type alexandria:non-negative-real offset) (optimize (speed 3)))
+  (declare ;;(type alexandria:non-negative-real offset)
+   (optimize (speed 3)))
   (the double-float (* *SAMPLE-RATE* (* (sample offset) (spb *TEMPO*)))))
+
+;;--------------------------------------------------
 
 (defgeneric p (time pitch velocity duration channel &key pan))
 
-;; Stop reusing p here
+;; Stop reusing p here. WHY?
 (defmethod p ((time double-float) (pitch list) (velocity fixnum) (duration number) (channel fixnum) &key pan)
   "Play chord of notes"
-  (mapcar
-   (lambda (p)
-     (declare (fixnum p))
-     (when (> duration 0)
-       (when pan (fpan channel pan))
-       (at time #'fluidsynth:noteon *synth* channel p velocity)
-       (at (+ time (calc-beats duration)) #'fluidsynth:noteoff *synth* channel p)))
-   pitch))
-
+  (map nil (lambda (p)
+             (declare (fixnum p))
+             (when (> duration 0)
+               (when pan (fpan channel pan))
+               (at time #'fluidsynth:noteon *synth* channel p velocity)
+               (at (+ time (calc-beats duration)) #'fluidsynth:noteoff *synth* channel p)))
+       pitch))
 (defmethod p ((time double-float) (pitch list) (velocity fixnum) (duration number) (channel list) &key pan)
   "Play chord of notes, on provided channels"
-  (mapcar
-   (lambda (p v)
-     (declare (fixnum p v))
-     (p time p velocity duration v))
-   pitch
-   channel))
+  (map nil (lambda (p c)
+             (declare (fixnum p c))
+             (p time p velocity duration c))
+       pitch
+       channel))
 (defmethod p ((time double-float) (pitch fixnum) (velocity fixnum) (duration number) (channel fixnum) &key pan)
   "Play given pitch"
   (when (and (< 0 pitch 127)
@@ -54,32 +53,36 @@
     (when pan
       (fluidsynth:cc *synth* channel 10 (alexandria:clamp pan 0 127)))
     (at time #'fluidsynth:noteon *synth* channel pitch velocity)
-    (at (+ time (calc-beats duration)) #'fluidsynth:noteoff *synth* channel pitch)))
+    (at (+ time (calc-beats duration)) #'fluidsynth:noteoff *synth* channel pitch)
+    pitch))
 (defmethod p ((time double-float) (pitch fixnum) (velocity fixnum) (duration symbol) (channel fixnum) &key pan)
   "Play given pitch, at CM rythm"
   (let ((d (cm:rhythm duration)))
     (when (> d 0)
       (at time #'fluidsynth:noteon *synth* channel pitch velocity)
-      (at (+ time (calc-beats d)) #'fluidsynth:noteoff *synth* channel pitch))))
+      (at (+ time (calc-beats d)) #'fluidsynth:noteoff *synth* channel pitch)
+      pitch)))
 (defmethod p ((time double-float) (pitch symbol) (velocity fixnum) (duration symbol) (channel fixnum) &key pan)
   "Play given note on american notation, at CM rhythm"
-  (unless (and (eql :_ pitch) (eql 'cm::r pitch))
+  (unless (and (eql :_ pitch) (eql 'cm::r pitch) (eql NIL pitch))
     (let ((n (if (keywordp pitch) (note pitch) (cm:keynum pitch)))
           (d (cm:rhythm duration)))
+      (declare (fixnum n))
       (when (> d 0)
         (at time #'fluidsynth:noteon *synth* channel n velocity)
-        (at (+ time (calc-beats d)) #'fluidsynth:noteoff
-            *synth* channel n)))))
+        (at (+ time (calc-beats d)) #'fluidsynth:noteoff *synth* channel n)
+        n))))
 (defmethod p ((time double-float) (pitch symbol) (velocity fixnum) (duration number) (channel fixnum) &key pan)
   "Play given note on american notation"
   (when (and (> duration 0)
+             (not (eql NIL pitch))
              (not (eql :_ pitch))
              (not (eql 'cm::r pitch)))
     (let ((n (if (keywordp pitch) (note pitch) (cm:keynum pitch))))
-      (at time #'fluidsynth:noteon
-          *synth* channel n velocity)
-      (at (+ time (calc-beats duration)) #'fluidsynth:noteoff
-          *synth* channel n))))
+      (declare (fixnum n))
+      (at time #'fluidsynth:noteon *synth* channel n velocity)
+      (at (+ time (calc-beats duration)) #'fluidsynth:noteoff *synth* channel n)
+      n)))
 
 ;;--------------------------------------------------
 ;; TODO:
@@ -101,31 +104,36 @@
 (defmethod pa ((time double-float) (notes number) (velocity list) (duration number) (channel fixnum) (offset number) &key pan)
   (let* ((lnotes  (length velocity))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (v o) (p (+ time (calc-beats o)) notes v duration channel))
-            velocity
-            offsets)))
+    (map nil (lambda (v o)
+               (declare (fixnum v))
+               (p (+ time (calc-beats o)) notes v duration channel))
+         velocity
+         offsets)))
 (defmethod pa ((time double-float) (notes number) (velocity fixnum) (duration list) (channel fixnum) (offset number) &key pan)
   (let* ((lnotes  (length duration))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (d o) (p (+ time (calc-beats o)) notes velocity d channel))
-            duration
-            offsets)))
+    (map nil (lambda (d o)
+               (p (+ time (calc-beats o)) notes velocity d channel))
+         duration
+         offsets)))
 (defmethod pa ((time double-float) (notes number) (velocity fixnum) (duration number) (channel fixnum) (offset list) &key pan)
-  (mapcar (lambda (o) (when (>= o 0) (p (+ time (calc-beats o)) notes velocity duration channel)))
-          offset))
+  (map nil (lambda (o)
+             (when (>= o 0)
+               (p (+ time (calc-beats o)) notes velocity duration channel)))
+       offset))
 (defmethod pa ((time double-float) (notes number) (velocity list) (duration number) (channel fixnum) (offset list) &key pan)
-  (mapcar
-   (lambda (v o)
-     (declare (fixnum v))
-     (when (>= o 0) (p (+ time (calc-beats o)) notes v duration channel)))
-   velocity
-   offset))
+  (map nil (lambda (v o)
+             (declare (fixnum v))
+             (when (>= o 0)
+               (p (+ time (calc-beats o)) notes v duration channel)))
+       velocity
+       offset))
 (defmethod pa ((time double-float) (notes number) (velocity fixnum) (duration list) (channel fixnum) (offset list) &key pan)
-  (mapcar
-   (lambda (d o)
-     (when (>= o 0) (p (+ time (calc-beats o)) notes velocity d channel)))
-   duration
-   offset))
+  (map nil (lambda (d o)
+             (when (>= o 0)
+               (p (+ time (calc-beats o)) notes velocity d channel)))
+       duration
+       offset))
 
 ;; Multiple notes
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration number) (channel fixnum) (offset number) &key pan)
@@ -133,107 +141,139 @@
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
     (when pan
       (fluidsynth:cc *synth* channel 10 pan))
-    (mapcar (lambda (n o) (p (+ time (calc-beats o)) n velocity duration channel))
-            notes
-            offsets)))
+    (map nil (lambda (n o)
+;;               (declare (fixnum n) (number o))
+               (p (+ time (calc-beats o)) n velocity duration channel))
+         notes
+         offsets)))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration number) (channel list) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o c) (p (+ time (calc-beats o)) n velocity duration c))
-            notes
-            offsets
-            channel)))
+    (map nil (lambda (n o c)
+               (declare (fixnum c))
+               (p (+ time (calc-beats o)) n velocity duration c))
+         notes
+         offsets
+         channel)))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration number) (channel fixnum) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o v) (p (+ time (calc-beats o)) n v duration channel))
-            notes
-            offsets
-            velocity)))
+    (map nil (lambda (n o v)
+               (declare (fixnum v))
+               (p (+ time (calc-beats o)) n v duration channel))
+         notes
+         offsets
+         velocity)))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration number) (channel list) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o v c) (p (+ time (calc-beats o)) n v duration c))
-            notes
-            offsets
-            velocity
-            channel)))
+    (map nil (lambda (n o v c)
+               (declare (fixnum v c))
+               (p (+ time (calc-beats o)) n v duration c))
+         notes
+         offsets
+         velocity
+         channel)))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration list) (channel fixnum) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o d) (p (+ time (calc-beats o)) n velocity d channel))
-            notes
-            offsets
-            duration)))
+    (map nil (lambda (n o d)
+               ;;(declare (fixnum n))
+               (p (+ time (calc-beats o)) n velocity d channel))
+         notes
+         offsets
+         duration)))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration list) (channel list) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o c d) (p (+ time (calc-beats o)) n velocity d c))
-            notes
-            offsets
-            channel
-            duration)))
+    (map nil (lambda (n o c d)
+               (declare (fixnum c))
+               (p (+ time (calc-beats o)) n velocity d c))
+         notes
+         offsets
+         channel
+         duration)))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration list) (channel fixnum) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o v d) (p (+ time (calc-beats o)) n v d channel))
-            notes
-            offsets
-            velocity
-            duration)))
+    (map nil (lambda (n o v d)
+               (declare (fixnum v))
+               (p (+ time (calc-beats o)) n v d channel))
+         notes
+         offsets
+         velocity
+         duration)))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration list) (channel list) (offset number) &key pan)
   (let* ((lnotes  (length notes))
          (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
-    (mapcar (lambda (n o v c d) (p (+ time (calc-beats o)) n v d c))
-            notes
-            offsets
-            velocity
-            channel
-            duration)))
+    (map nil (lambda (n o v c d)
+               (declare (fixnum v c))
+               (p (+ time (calc-beats o)) n v d c))
+         notes
+         offsets
+         velocity
+         channel
+         duration)))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration number) (channel fixnum) (offset list) &key pan)
-  (mapcar (lambda (n o) (p (+ time (calc-beats o)) n velocity duration channel))
-          notes
-          offset))
+  (map nil (lambda (n o)
+             ;;(declare (fixnum n))
+             (p (+ time (calc-beats o)) n velocity duration channel))
+       notes
+       offset))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration number) (channel list) (offset list) &key pan)
-  (mapcar (lambda (n o c) (p (+ time (calc-beats o)) n velocity duration c))
-          notes
-          offset
-          channel))
+  (map nil (lambda (n o c)
+             (declare (fixnum c))
+             (p (+ time (calc-beats o)) n velocity duration c))
+       notes
+       offset
+       channel))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration number) (channel fixnum) (offset list) &key pan)
-  (mapcar (lambda (n o v) (p (+ time (calc-beats o)) n v duration channel))
-          notes
-          offset
-          velocity))
+  (map nil (lambda (n o v)
+             (declare (fixnum v))
+             (p (+ time (calc-beats o)) n v duration channel))
+       notes
+       offset
+       velocity))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration number) (channel list) (offset list) &key pan)
-  (mapcar (lambda (n o v c) (p (+ time (calc-beats o)) n v duration c))
-          notes
-          offset
-          velocity
-          channel))
+  (map nil (lambda (n o v c)
+             (declare (fixnum v c))
+             (p (+ time (calc-beats o)) n v duration c))
+       notes
+       offset
+       velocity
+       channel))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration list) (channel fixnum) (offset list) &key pan)
-  (mapcar (lambda (n o d) (p (+ time (calc-beats o)) n velocity d channel))
-          notes
-          offset
-          duration))
+  (map nil (lambda (n o d)
+             ;;(declare (fixnum n))
+             (p (+ time (calc-beats o)) n velocity d channel))
+       notes
+       offset
+       duration))
 (defmethod pa ((time double-float) (notes list) (velocity fixnum) (duration list) (channel list) (offset list) &key pan)
-  (mapcar (lambda (n o c d) (p (+ time (calc-beats o)) n velocity d c))
-          notes
-          offset
-          channel
-          duration))
+  (map nil (lambda (n o c d)
+             (declare (fixnum c))
+             (p (+ time (calc-beats o)) n velocity d c))
+       notes
+       offset
+       channel
+       duration))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration list) (channel fixnum) (offset list) &key pan)
-  (mapcar (lambda (n o v d) (p (+ time (calc-beats o)) n v d channel))
-          notes
-          offset
-          velocity
-          duration))
+  (map nil (lambda (n o v d)
+             (declare (fixnum v))
+             (p (+ time (calc-beats o)) n v d channel))
+       notes
+       offset
+       velocity
+       duration))
 (defmethod pa ((time double-float) (notes list) (velocity list) (duration list) (channel list) (offset list) &key pan)
-  (mapcar (lambda (n o v c d) (p (+ time (calc-beats o)) n v d c))
-          notes
-          offset
-          velocity
-          channel
-          duration))
+  (map nil (lambda (n o v c d)
+             (declare (fixnum v c))
+             (p (+ time (calc-beats o)) n v d c))
+       notes
+       offset
+       velocity
+       channel
+       duration))
 
 ;;--------------------------------------------------
 
@@ -354,6 +394,10 @@
 (defun fpan (channel pan)
   (declare (type (integer 0 127) pan))
   (fluidsynth:cc *synth* channel 10 pan))
+
+(defun fvol (channel vol)
+  (declare (type (integer 0 127) vol))
+  (fluidsynth:cc *synth* channel 7 vol))
 
 (defun all-pan (&optional (pan 64) (max-channels 32))
   "Set PAN on all channels"
