@@ -7,6 +7,8 @@
 
 (defvar *qnotes* (make-hash-table)
   "Hash table used by (push-midi-note) that stores the state of each key.")
+(defvar *tempo-cutoff* .02
+  "drops inferred silences that last less than this")
 
 (defun get-time (mf &optional (unit :seconds))
   (declare (midifile:input-stream mf)
@@ -188,7 +190,7 @@
                  (< next-time time)
                  ;; NOTE: Hacks! basically we skip silences too small product
                  ;;       of the flaky math
-                 (> (- time next-time) .02))
+                 (> (- time next-time) *tempo-cutoff*))
             (let* ((zero-duration (- time next-time))
                    (zero-start    (- time zero-duration)))
               (setf next-time
