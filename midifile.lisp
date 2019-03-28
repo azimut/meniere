@@ -208,8 +208,11 @@
 
 (defun group-by-measure
     (mf
-     &optional (measure-length 2) (track-number 0) (unit :seconds) (silence T))
-  "returns 2 values as lists. First list of values are the notes per measure.
+     &optional (track-number 0) measure-length (unit :seconds) (silence T))
+  "returns 2 values as lists.
+   First list of values are the notes per MEASURE_LENGTH in
+   seconds if provided, if not is assumed 4/4 using the tempo
+   of the miditrack.
    Second list of values is for the durations.
    > (group-by-measure *mf* 2 1)
    ((40 42 43 47) (45 43) (40 42))
@@ -224,6 +227,11 @@
      :with acc-durations
      :with ret-notes
      :with ret-durations
+     :with quarter-time = (first (get-midi-tempo mf))
+     :with measure-length = (if (null measure-length)
+                                ;; Assume 4/4
+                                (* 4 quarter-time)
+                                measure-length)
      :summing (if (listp durations)
                   (first durations)
                   durations) :into total-duration
@@ -234,7 +242,7 @@
                                        durations))
               ;;
               (push (reverse acc-notes) ret-notes)
-              (push (reverse acc-durations) ret-durations)              
+              (push (reverse acc-durations) ret-durations)
               (setf acc-notes     NIL)
               (setf acc-durations NIL)
               ;;
@@ -248,7 +256,7 @@
 
 (defun get-measures-pair
     (mf
-     &optional (n-measures 4) (measure-length 2) (track-number 0) (unit :seconds) (silence T))
+     &optional (track-number 0) (n-measures 4) measure-length (unit :seconds) (silence T))
   "Returns a list of pairs of notes and durations of the midi file MF
    and TRACK-NUMBER. Up to N-MEASURES measure by MEASURE-LENGTH.
    Re-arrange output of group-by-measure to make it easier to
@@ -257,10 +265,53 @@
    (((40 42 43 47) (0.49895832 0.49895835 0.49895835 0.49895835))
     ((45 43 38)    (0.49895835 0.49895835 0.99895835)))"
   (multiple-value-bind (notes durations)
-      (group-by-measure mf measure-length track-number unit silence)
+      (group-by-measure mf track-number measure-length unit silence)
     (loop
        :for measure-notes :in notes
        :for measure-durations :in durations
        :repeat n-measures
        :collect (list measure-notes
                       measure-durations))))
+
+;;--------------------------------------------------
+
+(defun get-midi-signature (filename &optional (track-number 0))
+  "Prints the signature changes on the score.
+   > (get-midi-signature \"something.mid\")
+   Signature: 4/4 - Clocks per tick: 24 - Number of 1/32 per 24 clocks: 8"
+  (declare (string filename))
+  (midifile:with-open-midifile (mf filename)
+    (go-track track-number mf)
+    (loop
+       :for ev = (midifile:read-event mf)
+       :while ev
+       :when (and (midifile::meta-event-p mf)
+                  ;; Check if it is a "Time signature" event
+                  ;; https://www.csie.ntu.edu.tw/~r92092/ref/midi/#timesig
+                  (= (midifile:message-data1 mf) #x58)
+                  (= (midifile:message-data2 mf) #x04))
+       :do
+         (format T "Signature: ~d/~d - "
+                 (aref (midifile::input-stream-buffer mf) 3)
+                 (expt 2 (aref (midifile::input-stream-buffer mf) 4)))
+       ;;
+         (format T "Clocks per tick: ~d - Number of 1/32 per 24 clocks: ~d~%"
+                 (aref (midifile::input-stream-buffer mf) 5)
+                 (aref (midifile::input-stream-buffer mf) 6)))))
+
+(defun get-midi-tempo (filename &optional (track-number 0))
+  "returns a list of seconds per quarter note, one per tempo change"
+  (declare (string filename))
+  (midifile:with-open-midifile (mf filename)
+    (go-track track-number mf)
+    (loop
+       :for ev = (midifile:read-event mf)
+       :while ev
+       :when (and (midifile::meta-event-p mf)
+                  ;; Check if it is a "Set Tempo" event
+                  ;; https://www.csie.ntu.edu.tw/~r92092/ref/midi/#timesig
+                  (= (midifile:message-data1 mf) #x51)
+                  (= (midifile:message-data2 mf) #x03))
+       :collect
+         (/ (midifile::microseconds-per-quarter-note mf)
+            1e+6))))
