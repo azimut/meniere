@@ -9,6 +9,7 @@
   :serial t
   :depends-on (#:swank
                #:incudine
+               #:cl-ppcre
                #:incudine-fluidsynth
                #:alexandria
                #:cm)
