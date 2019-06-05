@@ -14,7 +14,7 @@
   (cm:keynum n))
 
 (defun midihz (n)
-  (cm:herthz n))
+  (cm:hertz n))
 
 ;; https://rosettacode.org/wiki/Map_range#Common_Lisp
 (defun map-range (a1 a2 b1 b2 s)
