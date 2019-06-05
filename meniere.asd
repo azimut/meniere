@@ -10,12 +10,10 @@
   :depends-on (#:swank
                #:incudine
                #:cl-ppcre
-               #:incudine-fluidsynth
                #:alexandria
                #:cm)
   :components ((:file "package")
                (:file "meniere")
-               (:file "fluidsynth")
                (:file "buffers")
                (:file "midifile")))
 
@@ -49,3 +47,14 @@
   :depends-on (#:meniere
                #:usocket)
   :components ((:file "csound-udp")))
+
+(asdf:defsystem #:meniere/fluidsynth
+  :description "collection of incudine dsps"
+  :author "Azimut <azimut.github@protonmail.com>"
+  :license  "Specify license here"
+  :homepage "https://github.com/azimut/meniere/"
+  :version "0.0.7"
+  :serial t
+  :depends-on (#:meniere
+               #:incudine-fluidsynth)
+  :components ((:file "fluidsynth")))
