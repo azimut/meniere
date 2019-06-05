@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/azimut/meniere.svg?branch=master)](https://travis-ci.org/azimut/meniere)
+
 # About meniere
 
 Collection of [incudine](http://incudine.sourceforge.net/) dsps and helpers. Depends on [CM](https://github.com/ormf/cm/).
