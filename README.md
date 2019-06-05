@@ -2,6 +2,21 @@
 
 Collection of [incudine](http://incudine.sourceforge.net/) dsps and helpers. Depends on [CM](https://github.com/ormf/cm/).
 
+## csound-udp.lisp
+
+Basic helpers to connect and trigger events against a started instance of [csound-live-code](https://github.com/kunstmusik/csound-live-code/). It uses the UDP port opened by csound to send events, see the official [docs](https://csound.com/docs/manual/udpserver.html) for more information.
+
+```
+$ csound livecode.csd
+```
+
+```
+SBCL> (ql:quickload :meniere/csound)
+SBCL> (csound-socket-connect)
+SBCL> (csound-chnset 0 "Bass.pan")
+SBCL> (clc "Bass" 60 30 1)
+```
+
 ## cm.lisp
 
 Common Music helpers that provide constructors for patterns that mimic the `(make-*)` that Common Music 3 has.
