@@ -6,17 +6,47 @@ Collection of [incudine](http://incudine.sourceforge.net/) dsps and helpers. Dep
 
 ## csound-udp.lisp
 
-Basic helpers to connect and trigger events against a started instance of [csound-live-code](https://github.com/kunstmusik/csound-live-code/). It uses the UDP port opened by csound to send events, see the official [docs](https://csound.com/docs/manual/udpserver.html) for more information.
+Basic helpers to connect and trigger events against a started instance of csound listening for commands on [UDP](https://csound.com/docs/manual/udpserver.html)/10000. More in particular it provides helpers for [csound-live-code](https://github.com/kunstmusik/csound-live-code/).
 
 ```
 $ csound livecode.csd
 ```
 
 ```
-SBCL> (ql:quickload :meniere/csound)
-SBCL> (csound-socket-connect)
-SBCL> (csound-chnset 0 "Bass.pan")
-SBCL> (clc "Bass" 60 30 1)
+> (ql:quickload :meniere/csound)
+> (in-package :meniere)
+> (csound-socket-connect)
+> (csound-chnset 0 "Bass.pan")
+> (clc "Bass" 60 30 1)
+```
+
+## csound-live-code.lisp
+
+Depends on [numcl](https://github.com/numcl/numcl)
+
+Tries to re-implement some of the logic of [csound-live-code](https://github.com/kunstmusik/csound-live-code/) in lisp/incudine.
+
+It provides a parser to do some hexabeat "math".
+```
+> (hexpitch "x93 + 2 ~ xadf>>2")
+#<cycle {1008DE9BC3}>
+#(3 2 2 3 2 2 3 3 1 1 1 0 1 0 1 1 0 1 1 1)
+(CONCATENATE 'VECTOR (ADD #*10010011 2) (ROLL #*101011011111 (- 2)))
+```
+You can use said cycle like this:
+```lisp
+(let ((p1 (hexpitch "xd11c")))
+         (defun f (time)
+           (when (next p1)
+             (p time 60 60 1 0))
+           (aat (+ time #[1 b]) #'f it)))
+```
+Or use `(hexplay)` that is a macro that uses `(hexpitchc)` that caches on a hash the cycle created. You can add spaces to use the same beat twice without reuse them.
+```lisp
+(defun f (time)
+  (hexplay "xd11c"
+    (p time 60 60 1 0))
+  (aat (+ time #[1 b]) #'f it))
 ```
 
 ## cm.lisp
@@ -35,6 +65,7 @@ Common Music helpers that provide constructors for patterns that mimic the `(mak
 ```
 
 ## buffers.lisp
+
 Helpers to handle incudine buffer objects. They are all build around caching and reusing buffers when possible. Default buffer dsp! has some filters build-in.
 
 ```lisp
@@ -60,15 +91,40 @@ You can make an instrument which will interpolate the note filling the blanks fo
 ```
 
 ## fluidsynth.lisp
-Shortcuts to control and use fluidsynth with incudine. Including `(p)` and `(pa)`, helpers to play a note/chord or arpeggio, useful on a temporal recursion scenario.
 
-### Examples
+Shortcuts to control and use incudine-fluidsynth.
+
+Includes `(p)` and `(pa)`, helpers to play a note/chord or arpeggio, useful on a temporal recursion scenario.
+
 ```
 > (fload "/home/user/myfont.sf2")
 > (p (now) :c4 60 1 0)
 > (p (now) '(60 63 67) 60 1 0)
 > (pa (now) '(60 58) 60 1 4 '(0 .25))
 > (pa (now) 60 60 1 4 '(0 .25))
+```
+
+## foxdot-grammar.lisp & foxdot-play.lisp
+
+These helpers give you a fast way to load foxdot samples and playthem as it's `play()` function does.
+
+Use `(fx-load-all)` to load all the samples from `*FX-PATH*`. Use `fx-pats` to return a list from the pattern passed. Use `fx-play` to parse the pattern string returned by it.
+
+Example:
+```
+(setf (bpm *tempo*) 120)
+
+(destructuring-bind (p1 p2 p3 p4)
+    (fx-pats "<x X ><[--] ><(_v)__><  o >")
+  (defun d1 (time)
+    (fx-play (cm:next p1) :amp .1)
+    (fx-play (cm:next p2) :amp .1)
+    (fx-play (cm:next p3) :amp .2)
+    (fx-play (cm:next p4) :amp .1 :downsamp 8 :rate 2.5 :lpf 200)
+    (aat (+ time #[1 b]) #'d1 it)))
+
+(aat (tempo-sync #[1 b]) #'d1 it)
+(defun p1 ())
 ```
 
 ## midifile.lisp
@@ -103,7 +159,6 @@ In order to use the (group-measures-pair) function you need to know
 the midi song bar length. Ex: 4/4 or 6/8.  Then provide the
 MEASURE-LENGTH. It varies depending the UNIT you use.
 
-#### `Example`
 ```lisp
 (defparameter *notes* nil)
 (setf *notes* (subseq (get-measures-pair *mf* 10 2 1) 6))

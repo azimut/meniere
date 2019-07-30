@@ -22,3 +22,19 @@
      (/ (* (- s a1)
 	   (- b2 b1))
 	(- a2 a1))))
+
+;;--------------------------------------------------
+
+(declaim (inline calc-beats))
+(defun calc-beats (offset)
+  (declare ;;(type alexandria:non-negative-real offset)
+   (optimize (speed 3)))
+  (the double-float (* *SAMPLE-RATE* (* (sample offset) (spb *TEMPO*)))))
+
+;;--------------------------------------------------
+
+(defun resolve-path (path &optional (assert-p t))
+  (let ((realpath (or (uiop:absolute-pathname-p path)
+                      (asdf:system-relative-pathname :meniere path))))
+    (when assert-p (assert (probe-file realpath)))
+    realpath))

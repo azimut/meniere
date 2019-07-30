@@ -19,14 +19,6 @@
 
 ;;--------------------------------------------------
 
-(declaim (inline calc-beats))
-(defun calc-beats (offset)
-  (declare ;;(type alexandria:non-negative-real offset)
-   (optimize (speed 3)))
-  (the double-float (* *SAMPLE-RATE* (* (sample offset) (spb *TEMPO*)))))
-
-;;--------------------------------------------------
-
 (defgeneric p (time pitch velocity duration channel &key pan))
 
 ;; Stop reusing p here. WHY?

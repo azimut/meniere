@@ -1,4 +1,4 @@
-(in-package :meniere)
+(in-package #:meniere)
 
 ;; TODO:
 ;;  - right now it uses (at) to stop (word-play),
@@ -63,7 +63,8 @@
       (setf in (incudine.vug:hpf in hpf hpr)))
     (unless (= 0d0 bpf)
       (setf in (incudine.vug:hpf in bpf bpr)))
-    (out (* amp (* left in)) (* amp (* right in)))))
+    (out (* amp (* left in))
+         (* amp (* right in)))))
 
 (dsp! bplay ((buf buffer)
              rate start-pos
@@ -94,7 +95,8 @@
       (setf in (incudine.vug:hpf in hpf hpr)))
     (unless (= 0d0 bpf)
       (setf in (incudine.vug:hpf in bpf bpr)))
-    (out (* amp (* left in)) (* amp (* right in)))))
+    (out (* amp (* left in))
+         (* amp (* right in)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -159,31 +161,33 @@
   "buffer-load wrapper for global hash caching and easy access
   FILENAME is a normal string of a path where to load the file
   (bbuffer-load \"/home/sendai/curso/furi-dream-cc.wav\")"
-  (declare (string filename))
-  (let* ((hkey (if alias-key
-                   alias-key
-                   (file-namestring filename)))
-         (buf  (gethash hkey *buffers*)))
+  (declare (type (or string pathname) filename))
+  (let* ((filepath (resolve-path filename))
+         (hkey     (if alias-key
+                       alias-key
+                       (file-namestring filepath)))
+         (buf      (gethash hkey *buffers*)))
     (if (not buf)
         (setf (gethash hkey *buffers*)
-              (buffer-load filename))
+              (buffer-load filepath))
         buf)))
 
 ;;--------------------------------------------------
 ;; Single buffer play
 
-(defun bbplay
-    (buf &key (rate 1d0 rate-p) (rpitch 0 rpitch-p) (beat-length 1f0 beat-length-p)
-           (start-pos 0d0) (loop-p nil) (amp 1d0) (id 2 id-p)
-           (lpf 0) (hpf 0) (bpf 0)
-           (left 1d0) (right 1d0) (downsamp 1 downsamp-p) (pan .5 pan-p)
-           (lpr 2) (hpr 2) (bpr 2)
-           (reson 0) (resonq 2)
-           (set 0 set-p))
+(defun bbplay (buf &key (rate 1d0 rate-p) (rpitch 0 rpitch-p) (beat-length 1f0 beat-length-p)
+                        (start-pos 0d0) (loop-p nil) (amp 1d0) (id 2 id-p)
+                        (lpf 0) (hpf 0) (bpf 0)
+                        (left 1d0) (right 1d0) (downsamp 1 downsamp-p) (pan .5 pan-p)
+                        (lpr 2) (hpr 2) (bpr 2)
+                        (reson 0) (resonq 2)
+                        (end-pos 0 end-pos-p)
+                        (set 0 set-p))
   (declare (fixnum rpitch)
            (boolean loop-p)
            (number lpf hpf bpf lpr hpr bpr pan
                    reson resonq
+                   end-pos
                    rate beat-length
                    amp left right)
            (unsigned-byte downsamp set id))
@@ -191,29 +195,33 @@
    PAN value between 0f0 and 1f0
    RATE plays the buffer to play at rate
    RPITCH bends the whole buffer rate to play to the new pitch offset
+   START-POS in samples
    BEAT-LENGTH stretch the whole buffer to play for N beats"
-  (when (or (symbolp buf) (stringp buf))
+  (when (or (symbolp buf) (stringp buf) (characterp buf))
     (let ((b (gethash buf *buffers*)))
       (when b
         (setf buf b))))
   ;; TODO: big check so we can send nil to beat-length without crashing
   (when (incudine:buffer-p buf)
     (let* ((sample-rate (buffer-sample-rate buf))
-           (frames (buffer-frames buf))
-           (sets (if set-p
-                     (gethash (file-namestring (buffer-file buf))
-                              *buffer-sets*)
-                     NIL))
-           (set  (if (and set-p sets)
-                     (mod set (array-dimension sets 0))
-                     NIL))
-           (start-pos (if (and set-p sets)
-                          (aref sets set 0)
-                          start-pos))
-           (end-pos   (if (and set-p sets)
-                          (aref sets set 1)
-                          frames))
-           (dur (/ (- end-pos start-pos) sample-rate)))
+           (frames      (if end-pos-p
+                            end-pos
+                            (buffer-frames buf)))
+           (sets        (if set-p
+                            (gethash (file-namestring (buffer-file buf))
+                                     *buffer-sets*)
+                            NIL))
+           (set         (if (and set-p sets)
+                            (mod set (array-dimension sets 0))
+                            NIL))
+           (start-pos   (if (and set-p sets)
+                            (aref sets set 0)
+                            start-pos))
+           (end-pos     (if (and set-p sets)
+                            (aref sets set 1)
+                            frames))
+           (dur         (/ (- end-pos start-pos)
+                           sample-rate)))
 
       (when rpitch-p
         (mulf rate (pitch-to-ratio rpitch)))
@@ -239,20 +247,20 @@
       (if (and set-p sets)
           (if id-p
               (play-lsample-f buf dur amp start-pos :rate rate
-                              :lpf lpf :hpf hpf :bpf bpf
-                              :lpr lpr :hpr hpr :bpr bpr
-                              :left left :right right
-                              :reson reson :resonq resonq
-                              :sus 1 :rel 0
-                              :downsamp downsamp
-                              :id id)
+                                                    :lpf lpf :hpf hpf :bpf bpf
+                                                    :lpr lpr :hpr hpr :bpr bpr
+                                                    :left left :right right
+                                                    :reson reson :resonq resonq
+                                                    :sus 1 :rel 0
+                                                    :downsamp downsamp
+                                                    :id id)
               (play-lsample-f buf dur amp start-pos :rate rate
-                              :lpf lpf :hpf hpf :bpf bpf
-                              :lpr lpr :hpr hpr :bpr bpr
-                              :reson reson :resonq resonq
-                              :sus 1 :rel 0
-                              :downsamp downsamp
-                              :left left :right right))
+                                                    :lpf lpf :hpf hpf :bpf bpf
+                                                    :lpr lpr :hpr hpr :bpr bpr
+                                                    :reson reson :resonq resonq
+                                                    :sus 1 :rel 0
+                                                    :downsamp downsamp
+                                                    :left left :right right))
           (if id-p
               (bplay buf rate start-pos loop-p amp left right
                      :lpf lpf :hpf hpf :bpf bpf

@@ -10,14 +10,15 @@
 ;; http://write.flossmanuals.net/csound/web-based-csound/
 ;; https://github.com/LispCookbook/cl-cookbook/blob/95086d1f8f5d64b3c4ec83523fbaba0e1ac52447/sockets.md
 
-(ql:quickload :usocket)
-
 (defvar *csound-socket* nil)
 (defvar *csound-host* "127.0.0.1")
 (defvar *csound-port* 10000)
 
-(defun csound-socket-connect ()
+(defun csound-socket-connect (&optional force-p)
   "initialize global usocket *CSOUND-SOCKET*"
+  (declare (type boolean force-p))
+  (when force-p
+    (csound-socket-close))
   (unless *csound-socket*
     (setf *csound-socket*
           (usocket:socket-connect *csound-host* *csound-port*
@@ -101,3 +102,56 @@
             (when (and *csound-socket* (> k 0) (> velocity 0) (> duration 0))
               (csound-socket-send msg))))
         keynum))
+
+;;--------------------------------------------------
+;; TODO: it might be a good idea to send csound offsets instead of incudine:aat
+(defgeneric cla (i keynum velocity duration offset))
+
+(defmethod cla ((i list) (keynum list) velocity duration (offset number))
+  (let* ((lnotes  (length keynum))
+         (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
+    (mapc (lambda (y k o) (aat (+ (now)
+                             (* *SAMPLE-RATE* (* (sample o) (spb *TEMPO*))))
+                          #'clc y k velocity duration))
+          i
+          keynum
+          offsets)))
+
+(defmethod cla (i (keynum list) velocity duration (offset number))
+  (let* ((lnotes  (length keynum))
+         (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
+    (mapc (lambda (k o) (aat (+ (now)
+                           (* *SAMPLE-RATE* (* (sample o) (spb *TEMPO*))))
+                        #'clc i k velocity duration))
+          keynum
+          offsets)))
+
+(defmethod cla (i (keynum list) (velocity list) duration (offset number))
+  (let* ((lnotes  (length keynum))
+         (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
+    (mapc (lambda (k v o) (aat (+ (now)
+                             (* *SAMPLE-RATE* (* (sample o) (spb *TEMPO*))))
+                          #'clc i k v duration))
+          keynum
+          velocity
+          offsets)))
+
+(defmethod cla (i (keynum fixnum) (velocity list) duration (offset number))
+  (let* ((lnotes  (length velocity))
+         (offsets (loop :for i :from 0 :by offset :collect i :repeat lnotes)))
+    (mapc (lambda (v o) (aat (+ (now)
+                           (* *SAMPLE-RATE* (* (sample o) (spb *TEMPO*))))
+                        #'clc i keynum v duration))
+          velocity
+          offsets)))
+
+(defmethod cla ((i list) (keynum list) (velocity list) duration (offset number))
+  (let* ((lnotes  (length keynum))
+         (offsets (loop :for x :from 0 :by offset :collect x :repeat lnotes)))
+    (mapc (lambda (y k v o) (aat (+ (now)
+                               (* *SAMPLE-RATE* (* (sample o) (spb *TEMPO*))))
+                            #'clc y k v duration))
+          i
+          keynum
+          velocity
+          offsets)))
