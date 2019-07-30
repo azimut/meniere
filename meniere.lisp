@@ -38,3 +38,11 @@
                       (asdf:system-relative-pathname :meniere path))))
     (when assert-p (assert (probe-file realpath)))
     realpath))
+
+(defun beat ()
+  "returns the current beat, double precision"
+  (declare (type double-float *sample-rate*))
+  (/ (now) (* *sample-rate* (spb *tempo*))))
+(defun rbeat ()
+  "returns the current beat, floor to integer"
+  (floor (beat)))

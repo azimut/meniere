@@ -16,6 +16,7 @@
                #:cm)
   :components ((:file "package")
                (:file "meniere")
+               (:file "cm")
                (:file "buffers")
                (:file "midifile")))
 

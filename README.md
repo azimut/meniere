@@ -22,7 +22,7 @@ $ csound livecode.csd
 
 ## csound-live-code.lisp
 
-Depends on [numcl](https://github.com/numcl/numcl)
+Depends on [numcl](https://github.com/numcl/numcl) and his deps [constantfold](https://github.com/numcl/constantfold), [specialized-function](https://github.com/numcl/specialized-function), [gtype](https://github.com/numcl/gtype) and [trivia](https://github.com/guicho271828/trivia/) from github at the time of writting this
 
 Tries to re-implement some of the logic of [csound-live-code](https://github.com/kunstmusik/csound-live-code/) in lisp/incudine.
 
